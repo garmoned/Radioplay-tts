@@ -22,10 +22,13 @@ router.post('/tts/payload', (req, res, next) => {
 
     let indexedJson = json.map((obj, index) => {
       obj.index = index;
+      if (obj.character === 'Jerry Seinfeld') {
+        obj.voice_actor = "GuyNeural"
+      }
       return obj;
     })
 
-    console.log(indexedJson);
+    // console.log(indexedJson);
 
     indexedJson.map((obj) => {
       textToSpeech(subscriptionKey, saveAudio, obj);
@@ -65,6 +68,7 @@ textToSpeech = (subscriptionKey, saveAudio, dialogueObj) => {
 saveAudio = (accessToken, dialogueObj) => {
   let voiceActor = `Microsoft Server Speech Text to Speech Voice (en-US, ${dialogueObj.voice_actor})`;
   let fileName = `${dialogueObj.index}_${dialogueObj.character}.wav`;
+  console.log(dialogueObj.text);
 
   // Create the SSML request.
   let xml_body = xmlbuilder
