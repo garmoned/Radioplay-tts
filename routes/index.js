@@ -6,7 +6,7 @@ const fs = require("fs");
 const readline = require("readline-sync");
 const xmlbuilder = require("xmlbuilder");
 
-const subscriptionKey = "c0a8baf6158d4a2b8a6eeabf5e11702d";
+const subscriptionKey = "cea56718e9094744a4edf6778cbcb8b3";
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -14,19 +14,38 @@ router.get('/', function(req, res, next) {
 });
 
 router.post('/tts/payload', (req, res, next) => {
-  console.log(req.body);
-
   let parsed = req.body;
   let textPayload = parsed.payload;
 
-  textToSpeech(subscriptionKey, saveAudio, textPayload);
+  fs.readFile('speech.json', (err, data) => {
+    let json = JSON.parse(data);
+
+    let indexedJson = json.map((obj, index) => {
+      obj.index = index;
+      return obj;
+    })
+
+    console.log(indexedJson);
+
+    indexedJson.map((obj) => {
+      textToSpeech(subscriptionKey, saveAudio, obj);
+    });
+
+
+  })
+
+  // parsedJson.map(obj => {
+  //   textToSpeech(subscriptionKey, saveAudio, obj);
+  // });
+
+  // textToSpeech(subscriptionKey, saveAudio, textPayload);
   res.send('file is ready, yay!');
 });
 
-textToSpeech = (subscriptionKey, saveAudio, textPayload) => {
+textToSpeech = (subscriptionKey, saveAudio, dialogueObj) => {
   let options = {
     method: "POST",
-    uri: "https://westus.api.cognitive.microsoft.com/sts/v1.0/issueToken",
+    uri: "https://eastus.api.cognitive.microsoft.com/sts/v1.0/issueToken",
     headers: {
       "Ocp-Apim-Subscription-Key": subscriptionKey
     }
@@ -34,7 +53,7 @@ textToSpeech = (subscriptionKey, saveAudio, textPayload) => {
 
   getToken = (error, response, body) => {
     if (!error && response.statusCode == 200) {
-      saveAudio(body, textPayload);
+      saveAudio(body, dialogueObj);
     } else {
       throw new Error(error);
     }
@@ -43,9 +62,11 @@ textToSpeech = (subscriptionKey, saveAudio, textPayload) => {
   request(options, getToken);
 };
 
-saveAudio = (accessToken, textPayload) => {
+saveAudio = (accessToken, dialogueObj) => {
+  let voiceActor = `Microsoft Server Speech Text to Speech Voice (en-US, ${dialogueObj.voice_actor})`;
+  let fileName = `${dialogueObj.index}_${dialogueObj.character}.wav`;
+
   // Create the SSML request.
-  let text = textPayload;
   let xml_body = xmlbuilder
     .create("speak")
     .att("version", "1.0")
@@ -54,16 +75,19 @@ saveAudio = (accessToken, textPayload) => {
     .att("xml:lang", "en-us")
     .att(
       "name",
-      "Microsoft Server Speech Text to Speech Voice (en-US, Guy24KRUS)"
+      voiceActor
     )
-    .txt(text)
+    .txt(dialogueObj.text)
     .end();
   // Convert the XML into a string to send in the TTS request.
   let body = xml_body.toString();
 
+
+  //https://eastus.tts.speech.microsoft.com/cognitiveservices/v1
+
   let options = {
     method: "POST",
-    baseUrl: "https://westus.tts.speech.microsoft.com/",
+    baseUrl: "https://eastus.tts.speech.microsoft.com/",
     url: "cognitiveservices/v1",
     headers: {
       Authorization: "Bearer " + accessToken,
@@ -85,7 +109,7 @@ saveAudio = (accessToken, textPayload) => {
     console.log("Your file is ready.\n");
   }
   // Pipe the response to file.
-  request(options, convertText).pipe(fs.createWriteStream("sample.wav"));
+  request(options, convertText).pipe(fs.createWriteStream(fileName));
 };
 
 
