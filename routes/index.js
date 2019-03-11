@@ -1,4 +1,4 @@
-var express = require('express');
+var express = require("express");
 var router = express.Router();
 
 const request = require("request");
@@ -9,40 +9,27 @@ const xmlbuilder = require("xmlbuilder");
 const subscriptionKey = "cea56718e9094744a4edf6778cbcb8b3";
 
 /* GET home page. */
-router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
+router.get("/", function(req, res, next) {
+  res.render("index", { title: "Express" });
 });
 
-router.post('/tts/payload', (req, res, next) => {
-  let parsed = req.body;
-  let textPayload = parsed.payload;
-
-  fs.readFile('speech.json', (err, data) => {
+router.post("/tts/payload", (req, res, next) => {
+  fs.readFile("speech.json", (err, data) => {
     let json = JSON.parse(data);
 
-    let indexedJson = json.map((obj, index) => {
-      obj.index = index;
-      if (obj.character === 'Jerry Seinfeld') {
-        obj.voice_actor = "GuyNeural"
-      }
-      return obj;
-    })
-
-    // console.log(indexedJson);
-
-    indexedJson.map((obj) => {
-      textToSpeech(subscriptionKey, saveAudio, obj);
-    });
-
-
-  })
-
-  // parsedJson.map(obj => {
-  //   textToSpeech(subscriptionKey, saveAudio, obj);
-  // });
-
-  // textToSpeech(subscriptionKey, saveAudio, textPayload);
-  res.send('file is ready, yay!');
+    let indexedJson = json
+      .map((obj, index) => {
+        obj.index = index;
+        if (obj.character === "Jerry Seinfeld") {
+          obj.voice_actor = "Guy24kRUS";
+        }
+        return obj;
+      })
+      .forEach(obj => {
+        textToSpeech(subscriptionKey, saveAudio, obj);
+      });
+  });
+  res.send("file is ready, yay!");
 });
 
 textToSpeech = (subscriptionKey, saveAudio, dialogueObj) => {
@@ -66,7 +53,9 @@ textToSpeech = (subscriptionKey, saveAudio, dialogueObj) => {
 };
 
 saveAudio = (accessToken, dialogueObj) => {
-  let voiceActor = `Microsoft Server Speech Text to Speech Voice (en-US, ${dialogueObj.voice_actor})`;
+  let voiceActor = `Microsoft Server Speech Text to Speech Voice (en-US, ${
+    dialogueObj.voice_actor
+  })`;
   let fileName = `${dialogueObj.index}_${dialogueObj.character}.wav`;
   console.log(dialogueObj.text);
 
@@ -77,15 +66,13 @@ saveAudio = (accessToken, dialogueObj) => {
     .att("xml:lang", "en-us")
     .ele("voice")
     .att("xml:lang", "en-us")
-    .att(
-      "name",
-      voiceActor
-    )
+    .att("name", voiceActor)
+    .ele("prosody")
+    .att("rate", "-25.00%")
     .txt(dialogueObj.text)
     .end();
   // Convert the XML into a string to send in the TTS request.
   let body = xml_body.toString();
-
 
   //https://eastus.tts.speech.microsoft.com/cognitiveservices/v1
 
@@ -115,6 +102,5 @@ saveAudio = (accessToken, dialogueObj) => {
   // Pipe the response to file.
   request(options, convertText).pipe(fs.createWriteStream(fileName));
 };
-
 
 module.exports = router;
