@@ -19,7 +19,7 @@ router.post("/tts/payload", (req, res, next) => {
     if (err) throw new Error(err);
     let json = JSON.parse(data);
 
-    let truffle = shuffleArray(json);
+    // let truffle = shuffleArray(json);
 
     let splicedJson = json.slice(0, 29);
 
