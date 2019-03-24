@@ -3,6 +3,7 @@ var router = express.Router();
 
 const request = require("request");
 const fs = require("fs");
+const path = require('path');
 const readline = require("readline-sync");
 const xmlbuilder = require("xmlbuilder");
 
@@ -14,17 +15,22 @@ router.get("/", function(req, res, next) {
 });
 
 router.post("/tts/payload", (req, res, next) => {
-  fs.readFile("speech.json", (err, data) => {
+  fs.readFile("speech.JSON", (err, data) => {
+    if (err) throw new Error(err);
     let json = JSON.parse(data);
 
-    let indexedJson = json
+    let truffle = shuffleArray(json);
+
+    let splicedJson = json.slice(0, 29);
+
+    let indexedJson = splicedJson
       .map((obj, index) => {
         obj.index = index;
-        if (obj.character === "Jerry Seinfeld") {
-          obj.voice_actor = "Guy24kRUS";
+        if (obj.character === "Jerry_Seinfeld") {
+          obj.voice_actor = "BenjaminRUS";
         }
-        if (obj.character === 'George Costanza') {
-          obj.voice_actor = 'BenjaminRUS'
+        if (obj.character === 'George_Costanza') {
+          obj.voice_actor = "Guy24kRUS";
         }
         return obj;
       })
@@ -34,6 +40,14 @@ router.post("/tts/payload", (req, res, next) => {
   });
   res.send("file is ready, yay!");
 });
+
+
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+  }
+}
 
 textToSpeech = (subscriptionKey, saveAudio, dialogueObj) => {
   let options = {
@@ -56,6 +70,7 @@ textToSpeech = (subscriptionKey, saveAudio, dialogueObj) => {
 };
 
 saveAudio = (accessToken, dialogueObj) => {
+  console.log(accessToken, dialogueObj);
   let voiceActor = `Microsoft Server Speech Text to Speech Voice (en-US, ${
     dialogueObj.voice_actor
   })`;
@@ -77,8 +92,6 @@ saveAudio = (accessToken, dialogueObj) => {
   // Convert the XML into a string to send in the TTS request.
   let body = xml_body.toString();
 
-  //https://eastus.tts.speech.microsoft.com/cognitiveservices/v1
-
   let options = {
     method: "POST",
     baseUrl: "https://eastus.tts.speech.microsoft.com/",
@@ -92,6 +105,8 @@ saveAudio = (accessToken, dialogueObj) => {
     },
     body: body
   };
+
+  console.log('options', options);
   // This function makes the request to convert speech to text.
   // The speech is returned as the response.
   function convertText(error, response, body) {
@@ -100,6 +115,23 @@ saveAudio = (accessToken, dialogueObj) => {
     } else {
       throw new Error(error);
     }
+    // let pathName = path.resolve(__dirname, "../assets/laughs");
+    // console.log('pathName', pathName);
+    //  fs.readdir(path.resolve(__dirname, "../assets/laughs"), (err, files) => {
+    //    if (err) throw new Error(err);
+    //   console.log('reading dir', files)
+    //   shuffleArray(files);
+
+    //   files.map(file => {
+    //     fs.readFile(`${pathName}/${file}`, (err, data) => {
+    //       if (err) throw new Error(err);
+    //       fs.writeFile(`${dialogueObj.index}_${dialogueObj.character}.wav`, data, (err) => {
+    //         console.log('writing file, but where?');
+    //         if (err) throw new Error(err);
+    //       });
+    //     })
+    //   })
+    // });
     console.log("Your file is ready.\n");
   }
   // Pipe the response to file.
