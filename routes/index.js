@@ -23,6 +23,9 @@ router.post("/tts/payload", (req, res, next) => {
         if (obj.character === "Jerry Seinfeld") {
           obj.voice_actor = "Guy24kRUS";
         }
+        if (obj.character === 'George Costanza') {
+          obj.voice_actor = 'BenjaminRUS'
+        }
         return obj;
       })
       .forEach(obj => {
