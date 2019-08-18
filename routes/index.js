@@ -14,10 +14,21 @@ router.get("/", function(req, res, next) {
   res.render("index", { title: "Express" });
 });
 
+
+router.use(express.json())
+
 router.post("/tts/payload", (req, res, next) => {
-  fs.readFile("speech.JSON", (err, data) => {
-    if (err) throw new Error(err);
-    let json = JSON.parse(data);
+  
+
+
+
+
+    
+    let data = req.body;
+    
+
+
+    let json = data;
 
     // let truffle = shuffleArray(json);
 
@@ -37,7 +48,7 @@ router.post("/tts/payload", (req, res, next) => {
       .forEach(obj => {
         textToSpeech(subscriptionKey, saveAudio, obj);
       });
-  });
+
   res.send("file is ready, yay!");
 });
 
@@ -68,6 +79,7 @@ textToSpeech = (subscriptionKey, saveAudio, dialogueObj) => {
 
   request(options, getToken);
 };
+
 
 saveAudio = (accessToken, dialogueObj) => {
   console.log(accessToken, dialogueObj);
