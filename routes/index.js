@@ -1,7 +1,11 @@
 var express = require("express");
 var router = express.Router();
-
-const request = require("request");
+var bodyParser = require('body-parser');
+var mongoose = require('mongoose');
+var axios = require('axios');
+const mongURI = 'mongodb+srv://Admin:iamadmin@mismatch-lla7j.azure.mongodb.net/test?retryWrites=true&w=majority';
+const Line = require('../models/line')
+const request = require("request-promise");
 const fs = require("fs");
 const path = require('path');
 const readline = require("readline-sync");
@@ -14,18 +18,36 @@ router.get("/", function(req, res, next) {
   res.render("index", { title: "Express" });
 });
 
+let mongoOptions = { 
+  reconnectTries: Number.MAX_VALUE, 
+  reconnectInterval: 500,
+  useNewUrlParser: true,
+  useMongoClient: true 
+}
 
-router.use(express.json())
+mongoose.connect(mongURI,mongoOptions);
 
-router.post("/tts/payload", (req, res, next) => {
-  
+router.use(bodyParser());
+
+let locations = [];
 
 
+router.get('/tts/locations',(req,res) =>
+{
+    res.send(locations);
+
+})
 
 
+router.post("/tts/payload", async (req, res, next) => {
+
+    await Line.collection.drop();
+
+    locations = [];
     
-    let data = req.body;
     
+    let data = req.body.scriptData;
+    //console.log(data);
 
 
     let json = data;
@@ -45,11 +67,29 @@ router.post("/tts/payload", (req, res, next) => {
         }
         return obj;
       })
-      .forEach(obj => {
-        textToSpeech(subscriptionKey, saveAudio, obj);
-      });
+     
+      for (const obj of indexedJson){
 
-  res.send("file is ready, yay!");
+        let tokenOptions = {
+          method: "POST",
+          url: "https://eastus.api.cognitive.microsoft.com/sts/v1.0/issueToken",
+          headers: {
+            "Ocp-Apim-Subscription-Key": subscriptionKey
+          }
+        };
+
+       let token = await request(tokenOptions);
+
+        await saveAudio(token,obj)
+        .catch((err)=>{
+          if (err) throw new Error(err);
+        });
+
+      }
+
+
+      res.send(locations);
+
 });
 
 
@@ -60,35 +100,15 @@ function shuffleArray(array) {
   }
 }
 
-textToSpeech = (subscriptionKey, saveAudio, dialogueObj) => {
-  let options = {
-    method: "POST",
-    uri: "https://eastus.api.cognitive.microsoft.com/sts/v1.0/issueToken",
-    headers: {
-      "Ocp-Apim-Subscription-Key": subscriptionKey
-    }
-  };
+saveAudio = async (accessToken,dialogueObj) => {
+  //console.log(accessToken, dialogueObj);
 
-  getToken = (error, response, body) => {
-    if (!error && response.statusCode == 200) {
-      saveAudio(body, dialogueObj);
-    } else {
-      throw new Error(error);
-    }
-  };
-
-  request(options, getToken);
-};
-
-
-saveAudio = (accessToken, dialogueObj) => {
-  console.log(accessToken, dialogueObj);
   let voiceActor = `Microsoft Server Speech Text to Speech Voice (en-US, ${
     dialogueObj.voice_actor
   })`;
   let fileName = `${dialogueObj.index}_${dialogueObj.character}.wav`;
-  console.log(dialogueObj.text);
-
+  //console.log(dialogueObj.text);
+  
   // Create the SSML request.
   let xml_body = xmlbuilder
     .create("speak")
@@ -104,50 +124,54 @@ saveAudio = (accessToken, dialogueObj) => {
   // Convert the XML into a string to send in the TTS request.
   let body = xml_body.toString();
 
+
+
   let options = {
     method: "POST",
-    baseUrl: "https://eastus.tts.speech.microsoft.com/",
-    url: "cognitiveservices/v1",
+    url: "https://eastus.tts.speech.microsoft.com/cognitiveservices/v1",
     headers: {
+      'Content-Type': 'text/xml',
       Authorization: "Bearer " + accessToken,
       "cache-control": "no-cache",
       "User-Agent": "YOUR_RESOURCE_NAME",
       "X-Microsoft-OutputFormat": "riff-24khz-16bit-mono-pcm",
       "Content-Type": "application/ssml+xml"
     },
-    body: body
+    
+      body: body
+    
   };
 
-  console.log('options', options);
-  // This function makes the request to convert speech to text.
-  // The speech is returned as the response.
-  function convertText(error, response, body) {
-    if (!error && response.statusCode == 200) {
-      console.log("Converting text-to-speech. Please hold...\n");
-    } else {
-      throw new Error(error);
-    }
-    // let pathName = path.resolve(__dirname, "../assets/laughs");
-    // console.log('pathName', pathName);
-    //  fs.readdir(path.resolve(__dirname, "../assets/laughs"), (err, files) => {
-    //    if (err) throw new Error(err);
-    //   console.log('reading dir', files)
-    //   shuffleArray(files);
 
-    //   files.map(file => {
-    //     fs.readFile(`${pathName}/${file}`, (err, data) => {
-    //       if (err) throw new Error(err);
-    //       fs.writeFile(`${dialogueObj.index}_${dialogueObj.character}.wav`, data, (err) => {
-    //         console.log('writing file, but where?');
-    //         if (err) throw new Error(err);
-    //       });
-    //     })
-    //   })
-    // });
-    console.log("Your file is ready.\n");
-  }
-  // Pipe the response to file.
-  request(options, convertText).pipe(fs.createWriteStream(fileName));
-};
+  
 
+  let audio = await request(options);
+
+  saveToMongo(audio,fileName,dialogueObj.character);
+ 
+  
+  
+}
+
+
+async function saveToMongo(audio,fileName,characterName){
+
+    let line = new Line({
+      _id : new mongoose.Types.ObjectId(),
+      fileName: fileName,
+      audio: audio,
+      charName: characterName
+
+    })
+
+    
+    locations.push(line._id);
+    console.log(fileName,"-saved to mongoDB")
+    line.save();
+
+   }
+
+
+
+  
 module.exports = router;
