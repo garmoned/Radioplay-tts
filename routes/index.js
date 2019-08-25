@@ -4,17 +4,21 @@ var bodyParser = require('body-parser');
 var mongoose = require('mongoose');
 var axios = require('axios');
 const mongURI = 'mongodb+srv://Admin:iamadmin@mismatch-lla7j.azure.mongodb.net/test?retryWrites=true&w=majority';
-const Line = require('../models/line')
 const request = require("request-promise");
-const fs = require("fs");
+const fs = require("fs").promises;
+const ofs = require('fs');
 const path = require('path');
 const readline = require("readline-sync");
 const xmlbuilder = require("xmlbuilder");
+const Grid = require('gridfs-stream')
+
+
 
 const subscriptionKey = "cea56718e9094744a4edf6778cbcb8b3";
 
 /* GET home page. */
 router.get("/", function(req, res, next) {
+  
   res.render("index", { title: "Express" });
 });
 
@@ -24,27 +28,43 @@ let mongoOptions = {
   useNewUrlParser: true,
   useMongoClient: true 
 }
+var gfs;
 
 mongoose.connect(mongURI,mongoOptions);
+mongoose.connection.once("open" , ()=>{
+  gfs = Grid(mongoose.connection.db,mongoose.mongo);
+})
+
+
+
 
 router.use(bodyParser());
 
 let locations = [];
 
 
-router.get('/tts/locations',(req,res) =>
+router.get('/tts/getScript',(req,res) =>
 {
-    res.send(locations);
+
+  var fileNames = [];
+  gfs.files.find().map((file)=>{
+
+    console.log(file.fileame)
+    fileNames.push(file.filename)
+
+  })
+
+  res.send(JSON.stringify(fileNames));
 
 })
 
 
 router.post("/tts/payload", async (req, res, next) => {
-
-    await Line.collection.drop();
-
+    console.log('here')
     locations = [];
-    
+
+    mongoose.connection.dropCollection('fs.files');
+    mongoose.connection.dropCollection('fs.chunks');
     
     let data = req.body.scriptData;
     //console.log(data);
@@ -88,7 +108,7 @@ router.post("/tts/payload", async (req, res, next) => {
       }
 
 
-      res.send(locations);
+      
 
 });
 
@@ -144,32 +164,18 @@ saveAudio = async (accessToken,dialogueObj) => {
 
 
   
-
-  let audio = await request(options);
-
-  saveToMongo(audio,fileName,dialogueObj.character);
- 
   
-  
+ var writeStream = gfs.createWriteStream({
+    filename : fileName,
+    contentType:'audio/x-wav'
+  })
+
+
+  request(options).pipe(writeStream);
+
+  console.log('wrote', fileName);
+
 }
-
-
-async function saveToMongo(audio,fileName,characterName){
-
-    let line = new Line({
-      _id : new mongoose.Types.ObjectId(),
-      fileName: fileName,
-      audio: audio,
-      charName: characterName
-
-    })
-
-    
-    locations.push(line._id);
-    console.log(fileName,"-saved to mongoDB")
-    line.save();
-
-   }
 
 
 
