@@ -25,8 +25,7 @@ router.get("/", function(req, res, next) {
 let mongoOptions = { 
   reconnectTries: Number.MAX_VALUE, 
   reconnectInterval: 500,
-  useNewUrlParser: true,
-  useMongoClient: true 
+  useNewUrlParser: true
 }
 var gfs;
 
@@ -46,6 +45,8 @@ let locations = [];
 router.get('/tts/getScript',(req,res) =>
 {
 
+  locations = [];
+
   var fileNames = [];
   gfs.files.find().map((file)=>{
 
@@ -53,6 +54,8 @@ router.get('/tts/getScript',(req,res) =>
     fileNames.push(file.filename)
 
   })
+  
+  gfs.exist
 
   res.send(JSON.stringify(fileNames));
 
@@ -63,8 +66,8 @@ router.post("/tts/payload", async (req, res, next) => {
     console.log('here')
     locations = [];
 
-    mongoose.connection.dropCollection('fs.files');
-    mongoose.connection.dropCollection('fs.chunks');
+    await mongoose.connection.dropCollection('fs.files');
+    await mongoose.connection.dropCollection('fs.chunks');
     
     let data = req.body.scriptData;
     //console.log(data);
@@ -74,7 +77,7 @@ router.post("/tts/payload", async (req, res, next) => {
 
     // let truffle = shuffleArray(json);
 
-    let splicedJson = json.slice(0, 29);
+    let splicedJson = json.slice(0, data.length);
 
     let indexedJson = splicedJson
       .map((obj, index) => {
@@ -106,6 +109,8 @@ router.post("/tts/payload", async (req, res, next) => {
         });
 
       }
+
+      res.send(JSON.stringify(locations))
 
 
       
@@ -161,9 +166,6 @@ saveAudio = async (accessToken,dialogueObj) => {
       body: body
     
   };
-
-
-  
   
  var writeStream = gfs.createWriteStream({
     filename : fileName,
@@ -171,7 +173,14 @@ saveAudio = async (accessToken,dialogueObj) => {
   })
 
 
-  request(options).pipe(writeStream);
+  await request(options).pipe(writeStream);
+
+  let data = {
+    name : dialogueObj.character,
+    fileName :fileName
+  }
+
+  locations.push(data);
 
   console.log('wrote', fileName);
 

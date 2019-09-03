@@ -20,6 +20,7 @@
     "mongoose-gridfs": "^1.2.5",
     "morgan": "~1.9.0",
     "multer": "^1.4.2",
+    "music-metadata": "^4.3.1",
     "readline-sync": "^1.4.9",
     "request": "^2.88.0",
     "request-promise": "^4.2.4",
