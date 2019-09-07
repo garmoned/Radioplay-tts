@@ -3,7 +3,7 @@ var router = express.Router();
 var bodyParser = require('body-parser');
 var mongoose = require('mongoose');
 var axios = require('axios');
-const mongURI = 'mongodb+srv://Admin:iamadmin@mismatch-lla7j.azure.mongodb.net/test?retryWrites=true&w=majority';
+const mongURI = 'mongodb+srv://Admin:iamadmin@cluster0-bqnw7.mongodb.net/test?retryWrites=true&w=majority';
 const request = require("request-promise");
 const fs = require("fs").promises;
 const ofs = require('fs');
@@ -58,6 +58,7 @@ router.get('/tts/getScript',(req,res) =>
   gfs.exist
 
   res.send(JSON.stringify(fileNames));
+  mongoose.connection.close();
 
 })
 
@@ -127,66 +128,80 @@ function shuffleArray(array) {
 
 saveAudio = async (accessToken,dialogueObj) => {
   //console.log(accessToken, dialogueObj);
+  return new Promise((resolve,reject)=>{
 
-  let voiceActor = `Microsoft Server Speech Text to Speech Voice (en-US, ${
-    dialogueObj.voice_actor
-  })`;
-  let fileName = `${dialogueObj.index}_${dialogueObj.character}.wav`;
-  //console.log(dialogueObj.text);
-  
-  // Create the SSML request.
-  let xml_body = xmlbuilder
-    .create("speak")
-    .att("version", "1.0")
-    .att("xml:lang", "en-us")
-    .ele("voice")
-    .att("xml:lang", "en-us")
-    .att("name", voiceActor)
-    .ele("prosody")
-    .att("rate", "-25.00%")
-    .txt(dialogueObj.text)
-    .end();
-  // Convert the XML into a string to send in the TTS request.
-  let body = xml_body.toString();
-
-
-
-  let options = {
-    method: "POST",
-    url: "https://eastus.tts.speech.microsoft.com/cognitiveservices/v1",
-    headers: {
-      'Content-Type': 'text/xml',
-      Authorization: "Bearer " + accessToken,
-      "cache-control": "no-cache",
-      "User-Agent": "YOUR_RESOURCE_NAME",
-      "X-Microsoft-OutputFormat": "riff-24khz-16bit-mono-pcm",
-      "Content-Type": "application/ssml+xml"
-    },
+    let voiceActor = `Microsoft Server Speech Text to Speech Voice (en-US, ${
+      dialogueObj.voice_actor
+    })`;
+    let fileName = `${dialogueObj.index}_${dialogueObj.character}.wav`;
+    //console.log(dialogueObj.text);
     
-      body: body
-    
-  };
+    // Create the SSML request.
+    let xml_body = xmlbuilder
+      .create("speak")
+      .att("version", "1.0")
+      .att("xml:lang", "en-us")
+      .ele("voice")
+      .att("xml:lang", "en-us")
+      .att("name", voiceActor)
+      .ele("prosody")
+      .att("rate", "-25.00%")
+      .txt(dialogueObj.text)
+      .end();
+    // Convert the XML into a string to send in the TTS request.
+    let body = xml_body.toString();
   
- var writeStream = gfs.createWriteStream({
-    filename : fileName,
-    contentType:'audio/x-wav'
+  
+  
+    let options = {
+      method: "POST",
+      url: "https://eastus.tts.speech.microsoft.com/cognitiveservices/v1",
+      headers: {
+        'Content-Type': 'text/xml',
+        Authorization: "Bearer " + accessToken,
+        "cache-control": "no-cache",
+        "User-Agent": "YOUR_RESOURCE_NAME",
+        "X-Microsoft-OutputFormat": "riff-24khz-16bit-mono-pcm",
+        "Content-Type": "application/ssml+xml"
+      },
+      
+        body: body
+      
+    };
+    
+   var writeStream = gfs.createWriteStream({
+      filename : fileName,
+      contentType:'audio/x-wav'
+    })
+  
+    writeStream.on('drain',()=>{
+      console.log('draining')
+    })
+
+    writeStream.on('finish',()=>{
+      console.log('wrote', fileName);
+      resolve();
+    })
+  
+    request(options).pipe(writeStream);
+  
+    let data = {
+      name : dialogueObj.character,
+      fileName :fileName
+    }
+  
+    locations.push(data);
+    
+    console.log('writing ',fileName)
+
+    
+  
+    
+
   })
-
-
-  await request(options).pipe(writeStream);
-
-  let data = {
-    name : dialogueObj.character,
-    fileName :fileName
-  }
-
-  locations.push(data);
-
-  console.log('wrote', fileName);
+ 
 
 }
-
-
-
   
 module.exports = router;
+
