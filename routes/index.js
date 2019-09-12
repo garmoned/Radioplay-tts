@@ -63,12 +63,28 @@ router.get('/tts/getScript',(req,res) =>
 })
 
 
-router.post("/tts/payload", async (req, res, next) => {
+router.post("/tts/payload", async (req, res) => {
     console.log('here')
     locations = [];
 
-    await mongoose.connection.dropCollection('fs.files');
-    await mongoose.connection.dropCollection('fs.chunks');
+    mongoose.connection.db.listCollections({name:'fs.files'})
+    .next(async (err,collection)=>{
+      if(collection){
+        console.log('dropping fs.files')
+        await mongoose.connection.dropCollection('fs.files');
+      }
+    });
+
+    mongoose.connection.db.listCollections({name:'fs.chunks'})
+    .next(async (err,collection)=>{
+      if(collection){
+        console.log('dropping fs.chunks')
+        await mongoose.connection.dropCollection('fs.chunks');
+      }
+    });
+    
+  
+    
     
     let data = req.body.scriptData;
     //console.log(data);
@@ -91,7 +107,7 @@ router.post("/tts/payload", async (req, res, next) => {
         }
         return obj;
       })
-     
+      
       for (const obj of indexedJson){
 
         let tokenOptions = {
@@ -103,7 +119,7 @@ router.post("/tts/payload", async (req, res, next) => {
         };
 
        let token = await request(tokenOptions);
-
+       
         await saveAudio(token,obj)
         .catch((err)=>{
           if (err) throw new Error(err);
