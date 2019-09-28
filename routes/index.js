@@ -50,7 +50,7 @@ router.get('/tts/getScript',(req,res) =>
   var fileNames = [];
   gfs.files.find().map((file)=>{
 
-    console.log(file.fileame)
+  
     fileNames.push(file.filename)
 
   })
@@ -64,7 +64,7 @@ router.get('/tts/getScript',(req,res) =>
 
 
 router.post("/tts/payload", async (req, res) => {
-    console.log('here')
+    console.log('recieved payload')
     locations = [];
 
     mongoose.connection.db.listCollections({name:'fs.files'})
@@ -100,7 +100,7 @@ router.post("/tts/payload", async (req, res) => {
       .map((obj, index) => {
         obj.index = index;
         if (obj.character === "Jerry_Seinfeld") {
-          obj.voice_actor = "BenjaminRUS";
+          obj.voice_actor = "en-US-GuyNeural";
         }
         if (obj.character === 'George_Costanza') {
           obj.voice_actor = "Guy24kRUS";
@@ -191,11 +191,11 @@ saveAudio = async (accessToken,dialogueObj) => {
     })
   
     writeStream.on('drain',()=>{
-      console.log('draining')
+      
     })
 
     writeStream.on('finish',()=>{
-      console.log('wrote', fileName);
+      
       resolve();
     })
   
@@ -208,7 +208,7 @@ saveAudio = async (accessToken,dialogueObj) => {
   
     locations.push(data);
     
-    console.log('writing ',fileName)
+   
 
     
   
