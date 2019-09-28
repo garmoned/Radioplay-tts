@@ -190,9 +190,6 @@ saveAudio = async (accessToken,dialogueObj) => {
       contentType:'audio/x-wav'
     })
   
-    writeStream.on('drain',()=>{
-      
-    })
 
     writeStream.on('finish',()=>{
       
