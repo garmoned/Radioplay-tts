@@ -100,7 +100,7 @@ router.post("/tts/payload", async (req, res) => {
       .map((obj, index) => {
         obj.index = index;
         if (obj.character === "Jerry_Seinfeld") {
-          obj.voice_actor = "en-US-GuyNeural";
+          obj.voice_actor = "BenjaminRUS";
         }
         if (obj.character === 'George_Costanza') {
           obj.voice_actor = "Guy24kRUS";
